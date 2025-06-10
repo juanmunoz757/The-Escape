@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Escape</title>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Inter font for a modern look -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" href="favicon.ico" type="image/x-icon" />
+    <link rel="apple-touch-icon" sizes="180x180" href="1.png" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+    <style>
+        /* Define CSS variables for theme colors at the root level */
+        :root {
+            --main-color: #0f2027; /* Default initial value, will be set by JS */
+            --main-color2: #203a43; /* Default initial value, will be set by JS */
+        }
+
+        /*
+         * Body styling:
+         * - Sets font to Arial for readability.
+         * - Uses flexbox to center content vertically and horizontally.
+         * - Sets a light background color and adds basic padding.
+         * - Background will be a dynamic gradient set by applyTheme.
+         */
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            /* Background and text colors set dynamically by applyTheme */
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box; /* Includes padding in the element's total width and height */
+            /* Allowing overflow-x for potentially "complicated" mobile view with large mazes */
+        }
+
+        /*
+         * Heading styling:
+         * - Sets text color and bottom margin.
+         */
+        h1 {
+            /* Color set dynamically by applyTheme */
+            margin-bottom: 20px;
+        }
+
+        /*
+         * General controls container for inputs and selects:
+         * - Uses flexbox for responsive layout of control elements.
+         * - Wraps items to the next line on smaller screens.
+         * - Adds gap between items and centers them.
+         */
+        .general-settings {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+            justify-content: center;
+            align-items: center;
+            width: 100%; /* Ensure it takes full width to center its content */
+            max-width: 800px; /* Limit width for readability */
+        }
+
+        /*
+         * Label styling within controls:
+         * - Makes labels bold and sets text color.
+         */
+        .general-settings label {
+            font-weight: bold;
+            /* Color set dynamically by applyTheme */
+        }
+
+        /*
+         * Number input and select styling within controls:
+         * - Adds padding, borders, and sets a fixed width for consistency.
+         */
+        .general-settings input[type="number"], .general-settings select {
+            padding: 8px;
+            border-radius: 4px;
+            width: 80px;
+            text-align: center;
+            /* Colors set dynamically by applyTheme */
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+        }
+
+        /*
+         * Button styling within controls:
+         * - Sets padding, text color, and border-radius.
+         * - Background is a dynamic gradient using CSS variables.
+         * - Adds a pointer cursor and a smooth transition for hover effects.
+         */
+        .button-groups button { /* Target buttons specifically within button-groups */
+            flex-shrink: 0; /* Don't shrink the button */
+            padding: 10px 15px;
+            border-radius: 12px; /* Changed to 12px as per new style */
+            border: none; /* No border as per new style */
+            background: linear-gradient(to right, var(--main-color), var(--main-color2)); /* Initial gradient direction as per image */
+            color: white; /* Keep text white for better contrast on gradients */
+            cursor: pointer;
+            font-weight: bold; /* Added font-weight bold */
+            font-size: 16px;
+            box-shadow: 0 0 8px rgba(0, 0, 0, 0.4); /* Adjusted shadow for general button */
+            transition: box-shadow 0.3s ease, background 0.3s ease; /* Updated transition properties */
+            margin: 5px; /* Added margin for spacing between buttons */
+            min-width: 100px; /* Ensure a decent minimum width for readability */
+        }
+
+        /*
+         * Button hover effect:
+         * - Swaps the gradient direction and adds a stronger shadow on hover.
+         */
+        .button-groups button:hover {
+            box-shadow: 0 0 12px rgba(0, 0, 0, 0.7); /* Adjusted shadow intensity */
+            background: linear-gradient(to right, var(--main-color2), var(--main-color)); /* Swapped gradient direction on hover */
+        }
+
+        /* Styling for disabled buttons */
+        .button-groups button:disabled {
+          
+            border: none !important; /* Ensure no border */
+            color: #888 !important;
+            cursor: not-allowed;
+            transform: none; /* Disable hover transform for disabled buttons */
+            box-shadow: none !important; /* No shadow for disabled buttons */
+        }
+
+        /*
+         * Container for Canvas and Player Icon:
+         * - Ensures relative positioning for absolute child elements.
+         */
+        .maze-container {
+            position: relative;
+            border: 2px solid #333; /* Default, will be overridden by applyTheme */
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); /* Default, will be overridden by applyTheme */
+            overflow: hidden; /* Ensure content outside canvas bounds (like player when moving) is hidden */
+        }
+
+        /*
+         * Canvas styling:
+         * - Background is handled by drawMaze with a gradient.
+         */
+        #mazeCanvas {
+            display: block; /* Remove extra space below canvas */
+        }
+
+        /*
+         * Player, Start, and End Icon Styling:
+         * - Positioned absolutely within .maze-container.
+         * - Centered within its cell, size adjusted.
+         * - Smooth transition for movement.
+         */
+        #playerIcon, #startIcon, #endIcon {
+            position: absolute;
+            font-size: 1.5em; /* Adjust icon size as needed */
+            text-align: center;
+            line-height: 1; /* For vertical centering of icon glyph */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: left 0.1s linear, top 0.1s linear; /* Smooth movement */
+            z-index: 10; /* Ensure icon is above maze */
+            /* Color set dynamically by applyTheme */
+        }
+
+        /*
+         * Information sections (solution) styling:
+         * - Sets top margin, font size, and text color.
+         * - Max width to keep content readable.
+         */
+        .info-section {
+            margin-top: 20px;
+            font-size: 1.1em;
+            /* Color and background set dynamically by applyTheme */
+            max-width: 600px; /* Limit width for better readability on large screens */
+            text-align: center;
+            padding: 10px;
+            border-radius: 8px;
+            /* Box-shadow and border-color set dynamically by applyTheme */
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        /* Styling for the main button grouping container */
+        .button-groups {
+            display: flex;
+            flex-direction: column; /* Stack button rows vertically */
+            gap: 10px; /* Space between the button rows */
+            margin-bottom: 20px;
+            align-items: center; /* Center the rows horizontally */
+            width: 100%; /* Take full width to allow centering */
+            max-width: 600px; /* Limit width for better alignment with canvas */
+        }
+
+        /* Styles for individual button rows */
+        .control-row {
+            display: flex;
+            flex-wrap: wrap; /* Allow buttons to wrap within their row if space is tight */
+            gap: 8px; /* Space between buttons in a row */
+            justify-content: center; /* Center buttons horizontally within the row */
+            width: 100%; /* Each row takes full width of its parent */
+        }
+
+        /* Footer styling */
+        footer {
+            margin-top: 30px;
+            font-size: 1.2em;
+            color: #888; /* Default text color, will adapt with theme */
+            text-align: center;
+            width: 100%;
+        }
+
+        footer a {
+            color: inherit; /* Inherit color from parent to adapt with theme */
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <h1>The Escape</h1>
+
+    <div class="general-settings">
+        <label for="width">Width:</label>
+        <input type="number" id="width" value="20" min="5" max="100">
+        <label for="height">Height:</label>
+        <input type="number" id="height" value="20" min="5" max="100">
+        <label for="themeSelect">Theme:</label>
+        <select id="themeSelect">
+            <!-- Options will be dynamically populated by JavaScript -->
+        </select>
+        <label for="playerIconSelect">Player Icon:</label>
+        <select id="playerIconSelect">
+            <!-- Options will be dynamically populated by JavaScript -->
+        </select>
+        <label for="startIconSelect">Start Icon:</label>
+        <select id="startIconSelect">
+            <!-- Options will be dynamically populated by JavaScript -->
+        </select>
+        <label for="endIconSelect">End Icon:</label>
+        <select id="endIconSelect">
+            <!-- Options will be dynamically populated by JavaScript -->
+        </select>
+    </div>
+
+    <!-- Main button controls -->
+    <div class="button-groups">
+        <div class="control-row action-buttons">
+            <button id="generateMaze">New Maze</button>
+            <button id="solveMaze">Solve Maze</button>
+            <button id="clearPath">Clear Path</button>
+        </div>
+        <div class="control-row movement-row-top">
+            <button id="undoMove" disabled>Undo</button>
+            <button id="moveUp">Up</button>
+            <button id="redoMove" disabled>Redo</button>
+        </div>
+        <div class="control-row movement-row-bottom">
+            <button id="moveLeft">Left</button>
+            <button id="moveDown">Down</button>
+            <button id="moveRight">Right</button>
+        </div>
+    </div>
+
+    <div class="maze-container">
+        <canvas id="mazeCanvas"></canvas>
+        <i id="playerIcon" class="fas fa-user"></i> <!-- Player icon element -->
+        <i id="startIcon" class="fas fa-play"></i> <!-- Start icon element -->
+        <i id="endIcon" class="fas fa-flag-checkered"></i> <!-- End icon element -->
+    </div>
+
+    <div class="info-section" id="solutionInfo"></div>
+
+    <footer>
+        Made with ❤️ by <a href="https://abdelrahmanz.netlify.app/" target="_blank">AbdElRahman</a>
+    </footer>
+
+    <script>
+        // Get references to HTML elements
+        const canvas = document.getElementById('mazeCanvas');
+        const ctx = canvas.getContext('2d'); // 2D rendering context
+        const widthInput = document.getElementById('width');
+        const heightInput = document.getElementById('height');
+        const themeSelect = document.getElementById('themeSelect'); // New theme selector
+        const playerIconSelect = document.getElementById('playerIconSelect'); // Player icon selector
+        const startIconSelect = document.getElementById('startIconSelect'); // Start icon selector
+        const endIconSelect = document.getElementById('endIconSelect'); // End icon selector
+        const generateButton = document.getElementById('generateMaze');
+        const solveButton = document.getElementById('solveMaze');
+        const solutionInfo = document.getElementById('solutionInfo');
+        const playerIconElement = document.getElementById('playerIcon'); // Reference to the player icon <i> element
+        const startIconElement = document.getElementById('startIcon'); // Reference to the start icon <i> element
+        const endIconElement = document.getElementById('endIcon');   // Reference to the end icon <i> element
+
+        // Button references for user interaction
+        const moveUpButton = document.getElementById('moveUp');
+        const moveDownButton = document.getElementById('moveDown');
+        const moveLeftButton = document.getElementById('moveLeft');
+        const moveRightButton = document.getElementById('moveRight');
+        const undoButton = document.getElementById('undoMove');
+        const redoButton = document.getElementById('redoMove');
+        const clearPathButton = document.getElementById('clearPath');
+
+        let CELL_SIZE = 20; // Define the initial size of each cell in pixels, will be dynamic
+
+        let mazeWidth;    // Stores the width of the maze grid
+        let mazeHeight;   // Stores the height of the maze grid
+        let maze = [];    // 2D array representing the maze cells
+        let solutionPath = []; // Stores the cells that form the *computer-generated* solution path
+        let solving = false; // Flag to prevent multiple simultaneous solve operations
+
+        // Variables for user interaction
+        let currentPlayerX; // Current X-coordinate of the player in the maze grid
+        let currentPlayerY; // Current Y-coordinate of the player in the maze grid
+        let userPath = [];  // Stores the cells the user has moved through
+        let pathHistory = []; // Stores snapshots of userPath for undo/redo
+        let historyIndex = -1; // Current index in pathHistory for undo/redo
+
+        // Themes array with color pairs and descriptive names
+        const themes = [
+            { name: 'Ocean', start: '#4facfe', end: '#00f2fe' },
+            { name: 'Sunset', start: '#ff9966', end: '#ff5e62' },
+            { name: 'Amethyst', start: '#4a00e0', end: '#8e2de2' },
+            { name: 'Violet', start: '#7F00FF', end: '#E100FF' },
+            { name: 'Sky', start: '#56CCF2', end: '#2F80ED' },
+            { name: 'Emerald', start: '#43e97b', end: '#38f9d7' },
+            { name: 'Berry', start: '#f953c6', end: '#b91d73' },
+            { name: 'Turquoise', start: '#30cfd0', end: '#330867' },
+            { name: 'Coral', start: '#f7797d', end: '#FBD786' },
+            { name: 'Electric', start: '#00c3ff', end: '#ffff1c' },
+            { name: 'Indigo', start: '#3a7bd5', end: '#3a6073' },
+            { name: 'Fire', start: '#FF512F', end: '#DD2476' },
+            { name: 'Forest', start: '#1D976C', end: '#93F9B9' },
+            { name: 'Blaze', start: '#ff6a00', end: '#ee0979' },
+            { name: 'Azure', start: '#2193b0', end: '#6dd5ed' },
+            { name: 'Rose', start: '#cc2b5e', end: '#753a88' },
+            { name: 'Charcoal', start: '#232526', end: '#1c1c1c' },
+            { name: 'Midnight', start: '#0f2027', end: '#203a43' },
+            { name: 'Shadow', start: '#1c1c1c', end: '#282828' },
+            { name: 'Stone', start: '#232526', end: '#414345' },
+            { name: 'Abyss', start: '#000000', end: '#434343' },
+            { name: 'Oceanic', start: '#141e30', end: '#243b55' },
+            { name: 'DeepSea', start: '#000428', end: '#004e92' } /* This is the new default theme */
+        ];
+
+        // Find the index of the desired default theme
+        let currentThemeIndex = themes.findIndex(theme => theme.start === '#000428' && theme.end === '#004e92');
+        if (currentThemeIndex === -1) {
+            currentThemeIndex = 0; // Fallback to the first theme if not found
+        }
+
+        // List of Font Awesome icons for the player
+        const playerIcons = [
+            { class: 'fas fa-user', name: 'User' },
+            { class: 'fas fa-ghost', name: 'Ghost' },
+            { class: 'fas fa-robot', name: 'Robot' },
+            { class: 'fas fa-hat-wizard', name: 'Wizard Hat' },
+            { class: 'fas fa-dragon', name: 'Dragon' },
+            { class: 'fas fa-spider', name: 'Spider' },
+            { class: 'fas fa-cat', name: 'Cat' },
+            { class: 'fas fa-dog', name: 'Dog' },
+            { class: 'fas fa-bug', name: 'Bug' },
+            { class: 'fas fa-star', name: 'Star' },
+            { class: 'fas fa-heart', name: 'Heart' },
+            { class: 'fas fa-circle', name: 'Circle' },
+            { class: 'fas fa-square', name: 'Square' },
+            { class: 'fas fa-triangle', name: 'Triangle' },
+            { class: 'fas fa-lightbulb', name: 'Lightbulb' },
+            { class: 'fas fa-car', name: 'Car' },
+            { class: 'fas fa-plane', name: 'Plane' },
+            { class: 'fas fa-ship', name: 'Ship' },
+            { class: 'fas fa-rocket', name: 'Rocket' },
+            { class: 'fas fa-tree', name: 'Tree' },
+            { class: 'fas fa-mountain', name: 'Mountain' },
+            { class: 'fas fa-sun', name: 'Sun' },
+            { class: 'fas fa-moon', name: 'Moon' },
+            { class: 'fas fa-cloud', name: 'Cloud' },
+            { class: 'fas fa-snowflake', name: 'Snowflake' },
+            { class: 'fas fa-crow', name: 'Crow' },
+            { class: 'fas fa-frog', name: 'Frog' },
+            { class: 'fas fa-fish', name: 'Fish' }
+        ];
+        let currentPlayerIconClass = playerIcons[0].class; // Default to first icon
+
+        // List of Font Awesome icons for the start point
+        const startIcons = [
+            { class: 'fas fa-play', name: 'Play' },
+            { class: 'fas fa-door-open', name: 'Door Open' },
+            { class: 'fas fa-house', name: 'House' },
+            { class: 'fas fa-map-pin', name: 'Map Pin' },
+            { class: 'fas fa-arrow-right', name: 'Arrow Right' },
+            { class: 'fas fa-hand-point-right', name: 'Hand Point Right' },
+            { class: 'fas fa-circle-play', name: 'Circle Play' },
+            { class: 'fas fa-dungeon', name: 'Dungeon' },
+            { class: 'fas fa-location-dot', name: 'Location Dot' }
+        ];
+        let currentStartIconClass = startIcons[0].class; // Default to first start icon
+
+        // List of Font Awesome icons for the end point
+        const endIcons = [
+            { class: 'fas fa-flag-checkered', name: 'Checkered Flag' },
+            { class: 'fas fa-door-closed', name: 'Door Closed' },
+            { class: 'fas fa-xmark', name: 'X Mark' },
+            { class: 'fas fa-bullseye', name: 'Bullseye' },
+            { class: 'fas fa-crown', name: 'Crown' },
+            { class: 'fas fa-star', name: 'Star (End)' },
+            { class: 'fas fa-gem', name: 'Gem' },
+            { class: 'fas fa-trophy', name: 'Trophy' },
+            { class: 'fas fa-square-check', name: 'Square Check' }
+        ];
+        let currentEndIconClass = endIcons[0].class; // Default to first end icon
+
+
+        /**
+         * Calculates the luminance of a hex color.
+         * Used to determine if a theme is "light" or "dark" for UI styling.
+         * @param {string} hex - The hex color string (e.g., "#RRGGBB").
+         * @returns {number} The luminance value (0-1).
+         */
+        function getLuminance(hex) {
+            const r = parseInt(hex.substring(1, 3), 16);
+            const g = parseInt(hex.substring(3, 5), 16);
+            const b = parseInt(hex.substring(5, 7), 16);
+            return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+        }
+
+        /**
+         * Applies the selected theme's visual settings to the entire page.
+         * @param {number} themeIndex - The index of the theme to apply from the `themes` array.
+         */
+        function applyTheme(themeIndex) {
+            currentThemeIndex = themeIndex;
+            const selectedTheme = themes[currentThemeIndex];
+            const [gradientStartColor, gradientEndColor] = [selectedTheme.start, selectedTheme.end];
+
+            // Set CSS variables for button gradients
+            document.documentElement.style.setProperty('--main-color', gradientStartColor);
+            document.documentElement.style.setProperty('--main-color2', gradientEndColor);
+
+            // Hardcode player, start, and end colors for consistency across two-color themes
+            // These will remain distinct for game elements regardless of the theme pair
+            const playerColor = '#00FFFF'; // Cyan for player
+            const startColor = '#00FF00'; // Lime for start
+            const endColor = '#FF0000';   // Red for end
+
+            // Determine if the theme's primary color (gradient start) is dark or light for overall UI styling
+            const isDarkTheme = getLuminance(gradientStartColor) < 0.5;
+
+            // Apply gradient to the entire body background
+            document.body.style.background = `linear-gradient(to bottom right, ${gradientStartColor}, ${gradientEndColor})`;
+            document.body.style.color = isDarkTheme ? '#e0e0e0' : '#333';
+            document.querySelector('h1').style.color = isDarkTheme ? '#f5f5f5' : '#333';
+
+            // Update maze container border and shadow
+            const mazeContainer = document.querySelector('.maze-container');
+            mazeContainer.style.borderColor = isDarkTheme ? '#555' : '#333'; // Slightly softer border for dark themes
+            mazeContainer.style.boxShadow = isDarkTheme ? '0 0 15px rgba(0, 0, 0, 0.4)' : '0 0 10px rgba(0, 0, 0, 0.1)';
+
+            // Update controls label color
+            document.querySelectorAll('label').forEach(label => {
+                label.style.color = isDarkTheme ? '#c0c0c0' : '#555';
+            });
+
+            // Update input/select styles
+            document.querySelectorAll('input[type="number"], select').forEach(input => {
+                input.style.backgroundColor = isDarkTheme ? 'rgba(51, 51, 51, 0.7)' : 'rgba(255, 255, 255, 0.7)';
+                input.style.color = isDarkTheme ? '#e0e0e0' : '#333';
+                input.style.borderColor = isDarkTheme ? 'rgba(68, 68, 68, 0.7)' : 'rgba(204, 204, 204, 0.7)';
+            });
+            
+            // Update info sections
+            document.querySelectorAll('.info-section').forEach(section => {
+                section.style.backgroundColor = isDarkTheme ? 'rgba(43, 43, 43, 0.7)' : 'rgba(233, 236, 239, 0.7)';
+                section.style.color = isDarkTheme ? '#e0e0e0' : '#333';
+                section.style.borderColor = isDarkTheme ? 'rgba(68, 68, 68, 0.7)' : 'rgba(222, 226, 230, 0.7)';
+                section.style.boxShadow = isDarkTheme ? '0 2px 5px rgba(0,0,0,0.2)' : '0 2px 4px rgba(0,0,0,0.05)';
+            });
+
+            // Set icon colors
+            playerIconElement.style.color = playerColor;
+            startIconElement.style.color = startColor;
+            endIconElement.style.color = endColor;
+
+            // Redraw maze to apply new colors
+            drawMaze(solutionPath, { wallColor: gradientEndColor, pathColor: gradientStartColor, playerColor, startColor, endColor });
+        }
+
+        /**
+         * Dynamically populates the theme select dropdown with options.
+         */
+        function populateThemeSelect() {
+            themeSelect.innerHTML = ''; // Clear existing options
+            themes.forEach((theme, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = theme.name; // Use the descriptive name
+                themeSelect.appendChild(option);
+            });
+            // Set the default selected theme
+            themeSelect.value = currentThemeIndex;
+        }
+
+        /**
+         * Dynamically populates the player icon select dropdown with options.
+         */
+        function populatePlayerIconSelect() {
+            playerIconSelect.innerHTML = ''; // Clear existing options
+            playerIcons.forEach(icon => {
+                const option = document.createElement('option');
+                option.value = icon.class;
+                // Add a small icon preview to the option text
+                const iconSpan = document.createElement('i');
+                iconSpan.className = icon.class;
+                iconSpan.style.marginRight = '5px';
+                option.appendChild(iconSpan);
+                option.appendChild(document.createTextNode(icon.name));
+                playerIconSelect.appendChild(option);
+            });
+            // Set the default selected icon
+            playerIconSelect.value = currentPlayerIconClass;
+        }
+
+        /**
+         * Dynamically populates the start icon select dropdown with options.
+         */
+        function populateStartIconSelect() {
+            startIconSelect.innerHTML = ''; // Clear existing options
+            startIcons.forEach(icon => {
+                const option = document.createElement('option');
+                option.value = icon.class;
+                const iconSpan = document.createElement('i');
+                iconSpan.className = icon.class;
+                iconSpan.style.marginRight = '5px';
+                option.appendChild(iconSpan);
+                option.appendChild(document.createTextNode(icon.name));
+                startIconSelect.appendChild(option);
+            });
+            startIconSelect.value = currentStartIconClass;
+        }
+
+        /**
+         * Dynamically populates the end icon select dropdown with options.
+         */
+        function populateEndIconSelect() {
+            endIconSelect.innerHTML = ''; // Clear existing options
+            endIcons.forEach(icon => {
+                const option = document.createElement('option');
+                option.value = icon.class;
+                const iconSpan = document.createElement('i');
+                iconSpan.className = icon.class;
+                iconSpan.style.marginRight = '5px';
+                option.appendChild(iconSpan);
+                option.appendChild(document.createTextNode(icon.name));
+                endIconSelect.appendChild(option);
+            });
+            endIconSelect.value = currentEndIconClass;
+        }
+
+        /**
+         * Represents a single cell in the maze grid.
+         */
+        class Cell {
+            constructor(x, y) {
+                this.x = x; // Column index
+                this.y = y; // Row index
+                // Walls around the cell, initially all true (walls present)
+                this.walls = {
+                    top: true,
+                    right: true,
+                    bottom: true,
+                    left: true
+                };
+                this.visited = false; // Used during maze generation (DFS) and solving (BFS)
+                this.parent = null;   // Used by BFS to reconstruct the path
+            }
+
+            /**
+             * Draws the cell's walls on the canvas. Does not fill the cell background.
+             * This function is now specifically for drawing walls, not the cell background.
+             * @param {string} strokeColor - The color for the walls.
+             * @param {number} lineWidth - The thickness of the walls.
+             */
+            drawWalls(strokeColor, lineWidth) {
+                const x = this.x * CELL_SIZE;
+                const y = this.y * CELL_SIZE;
+
+                ctx.strokeStyle = strokeColor;
+                ctx.lineWidth = lineWidth;
+
+                if (this.walls.top) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(x + CELL_SIZE, y);
+                    ctx.stroke();
+                }
+                if (this.walls.right) {
+                    ctx.beginPath();
+                    ctx.moveTo(x + CELL_SIZE, y);
+                    ctx.lineTo(x + CELL_SIZE, y + CELL_SIZE);
+                    ctx.stroke();
+                }
+                if (this.walls.bottom) {
+                    ctx.beginPath();
+                    ctx.moveTo(x + CELL_SIZE, y + CELL_SIZE);
+                    ctx.lineTo(x, y + CELL_SIZE);
+                    ctx.stroke();
+                }
+                if (this.walls.left) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, y + CELL_SIZE);
+                    ctx.lineTo(x, y);
+                    ctx.stroke();
+                }
+            }
+        }
+
+        /**
+         * Initializes the maze grid with new Cell objects and sets canvas dimensions.
+         * Resets all game state for a new maze.
+         * @param {number} width - The desired width of the maze (in cells).
+         * @param {number} height - The desired height of the maze (in cells).
+         */
+        function initializeMaze(width, height) {
+            mazeWidth = width;
+            mazeHeight = height;
+            maze = []; // Clear existing maze
+
+            // Populate the maze grid with new Cell objects
+            for (let y = 0; y < mazeHeight; y++) {
+                const row = [];
+                for (let x = 0; x < mazeWidth; x++) {
+                    row.push(new Cell(x, y));
+                }
+                maze.push(row);
+            }
+            solutionPath = []; // Clear any previous computer solution path
+            solutionInfo.textContent = ''; // Clear solution info message
+
+            // Initialize player position and path history for user interaction
+            currentPlayerX = 0;
+            currentPlayerY = 0;
+            userPath = [maze[currentPlayerY][currentPlayerX]]; // Start at (0,0)
+            pathHistory = [userPath.slice()]; // Store the initial state
+            historyIndex = 0;
+            updatePathControls(); // Update button states
+            // Apply initial theme and position player icon
+            applyTheme(currentThemeIndex);
+            resizeMaze(); // Call resize maze after initializing maze dimensions
+        }
+
+        /**
+         * Gets the valid direct (top, right, bottom, left) neighbors of a given cell.
+         * This function does not consider walls between cells.
+         * @param {Cell} cell - The cell for which to find neighbors.
+         * @returns {Cell[]} An array of neighboring Cell objects.
+         */
+        function getNeighbors(cell) {
+            const neighbors = [];
+            const { x, y } = cell;
+
+            // Check top neighbor
+            if (y > 0) neighbors.push(maze[y - 1][x]);
+            // Check right neighbor
+            if (x < mazeWidth - 1) neighbors.push(maze[y][x + 1]);
+            // Check bottom neighbor
+            if (y < mazeHeight - 1) neighbors.push(maze[y + 1][x]);
+            // Check left neighbor
+            if (x > 0) neighbors.push(maze[y][x - 1]);
+
+            return neighbors;
+        }
+
+        /**
+         * Removes the walls between two adjacent cells.
+         * This is crucial for creating paths during maze generation.
+         * @param {Cell} cell1 - The first cell.
+         * @param {Cell} cell2 - The second cell (adjacent to cell1).
+         */
+        function removeWalls(cell1, cell2) {
+            const dx = cell1.x - cell2.x; // Difference in x-coordinates
+            const dy = cell1.y - cell2.y; // Difference in y-coordinates
+
+            if (dx === 1) { // cell2 is to the left of cell1
+                cell1.walls.left = false;
+                cell2.walls.right = false;
+            } else if (dx === -1) { // cell2 is to the right of cell1
+                cell1.walls.right = false;
+                cell2.walls.left = false;
+            }
+
+            if (dy === 1) { // cell2 is above cell1
+                cell1.walls.top = false;
+                cell2.walls.bottom = false;
+            } else if (dy === -1) { // cell2 is below cell1
+                cell1.walls.bottom = false;
+                cell2.walls.top = false;
+            }
+        }
+
+        /**
+         * Generates the maze using the Depth-First Search (DFS) algorithm.
+         * @param {Cell} startCell - The cell to start maze generation from (typically maze[0][0]).
+         */
+        function generateMazeDFS(startCell) {
+            const stack = []; // Stack to keep track of visited cells and backtrack
+            startCell.visited = true; // Mark the starting cell as visited
+            stack.push(startCell);
+
+            while (stack.length > 0) {
+                // Get the current cell (top of the stack without removing it)
+                let current = stack[stack.length - 1];
+                // Find unvisited neighbors
+                let unvisitedNeighbors = getNeighbors(current).filter(n => !n.visited);
+
+                if (unvisitedNeighbors.length > 0) {
+                    // Pick a random unvisited neighbor
+                    let next = unvisitedNeighbors[Math.floor(Math.random() * unvisitedNeighbors.length)];
+                    removeWalls(current, next); // Remove the wall between current and next
+                    next.visited = true; // Mark the next cell as visited
+                    stack.push(next);    // Add the next cell to the stack
+                } else {
+                    // If no unvisited neighbors, backtrack by popping from the stack
+                    stack.pop();
+                }
+            }
+        }
+
+        /**
+         * Draws the entire maze grid on the canvas, including start, end, and user path trail.
+         * The player, start, and end icons are handled separately by HTML positioning.
+         * @param {Cell[]} compSolutionPath - An optional array of cells representing the computer-generated solution path to highlight.
+         * @param {object} colors - An object containing the current theme's colors for maze elements.
+         */
+        function drawMaze(compSolutionPath = [], colors = {}) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the entire canvas
+            
+            // Use colors from the passed object or default to current theme if not provided
+            const {
+                wallColor, // This will be the gradientEndColor from applyTheme
+                pathColor, // This will be the gradientStartColor from applyTheme
+                playerColor = '#00FFFF', // Hardcoded for consistency (used for user path trail)
+                startColor = '#00FF00',   // Hardcoded for consistency
+                endColor = '#FF0000'      // Hardcoded for consistency
+            } = colors;
+
+            // Create a linear gradient for the maze background
+            const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+            gradient.addColorStop(0, pathColor); // Start color
+            gradient.addColorStop(1, wallColor); // End color
+
+            ctx.fillStyle = gradient; /* Fill the entire canvas with the gradient */
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 1. Draw all cells' walls
+            for (let y = 0; y < mazeHeight; y++) {
+                for (let x = 0; x < mazeWidth; x++) {
+                    const cell = maze[y][x];
+                    cell.drawWalls(wallColor, 2); // Draw the walls on top of the filled canvas
+                }
+            }
+
+            // 2. Draw user's path trail (thicker square/dot)
+            if (userPath.length > 0) {
+                // Exclude the very last cell (current player position) if it's the only one
+                const trailPath = userPath.slice(0, userPath.length - 1); 
+                trailPath.forEach(cell => {
+                    const x = cell.x * CELL_SIZE;
+                    const y = cell.y * CELL_SIZE;
+                    const sizeMultiplier = 0.6;
+                    const offset = (CELL_SIZE * (1 - sizeMultiplier)) / 2;
+                    ctx.fillStyle = playerColor; // Use player color for the user path trail
+                    ctx.fillRect(x + offset, y + offset, CELL_SIZE * sizeMultiplier, CELL_SIZE * sizeMultiplier);
+                });
+            }
+
+            // 3. Draw the computer-generated solution path if provided (on top of player path)
+            if (compSolutionPath.length > 0) {
+                compSolutionPath.forEach(cell => {
+                    const x = cell.x * CELL_SIZE;
+                    const y = cell.y * CELL_SIZE;
+                    const sizeMultiplier = 0.5;
+                    const offset = (CELL_SIZE * (1 - sizeMultiplier)) / 2;
+                    ctx.fillStyle = '#17a2b8'; // Cyan color for computer solution, fixed for contrast
+                    ctx.fillRect(x + offset, y + offset, CELL_SIZE * sizeMultiplier, CELL_SIZE * sizeMultiplier);
+                });
+            }
+            // Player, start, and end icons are drawn via HTML, not canvas, so no drawing here for them.
+        }
+
+        /**
+         * Updates the CSS position of a given icon element based on its cell coordinates.
+         * @param {HTMLElement} element - The HTML <i> element for the icon.
+         * @param {number} cellX - The X-coordinate (column) of the cell.
+         * @param {number} cellY - The Y-coordinate (row) of the cell.
+         */
+        function updateIconPosition(element, cellX, cellY) {
+            // Get current rendered size of the icon for accurate centering
+            // Set font size dynamically based on CELL_SIZE for better scaling
+            element.style.fontSize = `${CELL_SIZE * 0.8}px`; // Icon size is 80% of cell size
+            const iconRect = element.getBoundingClientRect();
+            const iconWidth = iconRect.width;
+            const iconHeight = iconRect.height;
+
+            // Center the icon within the cell
+            element.style.left = `${cellX * CELL_SIZE + (CELL_SIZE - iconWidth) / 2}px`;
+            element.style.top = `${cellY * CELL_SIZE + (CELL_SIZE - iconHeight) / 2}px`;
+        }
+
+        /**
+         * Updates the positions of all player, start, and end icons.
+         */
+        function updateAllIconPositions() {
+            // Player icon
+            updateIconPosition(playerIconElement, currentPlayerX, currentPlayerY);
+
+            // Start icon (fixed at 0,0)
+            updateIconPosition(startIconElement, 0, 0);
+
+            // End icon (fixed at mazeWidth-1, mazeHeight-1)
+            updateIconPosition(endIconElement, mazeWidth - 1, mazeHeight - 1);
+        }
+
+        /**
+         * Resizes the maze canvas and adjusts CELL_SIZE based on container width.
+         */
+        function resizeMaze() {
+            const mazeContainer = document.querySelector('.maze-container');
+            // Get the width of the maze container (subtract any padding/border from the effective space)
+            const containerPaddingX = parseInt(window.getComputedStyle(mazeContainer).paddingLeft) + parseInt(window.getComputedStyle(mazeContainer).paddingRight);
+            const containerBorderX = parseInt(window.getComputedStyle(mazeContainer).borderLeftWidth) + parseInt(window.getComputedStyle(mazeContainer).borderRightWidth);
+            const availableWidth = mazeContainer.clientWidth - containerPaddingX - containerBorderX;
+
+
+            // Calculate new cell size based on available width and maze dimensions
+            // We want the maze to fit horizontally.
+            const newCellSize = Math.floor(availableWidth / mazeWidth);
+
+            // Ensure a minimum cell size to prevent icons/walls from becoming too small
+            // and a maximum to prevent it from becoming too large on very wide screens
+            CELL_SIZE = Math.max(newCellSize, 10); // Minimum 10px cell size
+            CELL_SIZE = Math.min(CELL_SIZE, 60); // Increased maximum to 60px for a bigger maze
+
+            // Update canvas dimensions based on new cell size
+            canvas.width = mazeWidth * CELL_SIZE;
+            canvas.height = mazeHeight * CELL_SIZE;
+
+            // Adjust maze container size to match canvas (important for absolute positioning of icons)
+            mazeContainer.style.width = `${canvas.width}px`;
+            mazeContainer.style.height = `${canvas.height}px`;
+
+            // Redraw maze and update icon positions with the new cell size
+            const currentTheme = themes[currentThemeIndex];
+            drawMaze(solutionPath, {
+                wallColor: currentTheme.end,
+                pathColor: currentTheme.start,
+                playerColor: '#00FFFF',
+                startColor: '#00FF00',
+                endColor: '#FF0000'
+            });
+            updateAllIconPositions();
+        }
+
+        /**
+         * Resets the 'visited' status and 'parent' pointers for all cells in the maze.
+         * This is necessary before running the solver.
+         */
+        function resetMazeVisitedStatus() {
+            for (let y = 0; y < mazeHeight; y++) {
+                for (let x = 0; x < mazeWidth; x++) {
+                    maze[y][x].visited = false;
+                    maze[y][x].parent = null;
+                }
+            }
+        }
+
+        /**
+         * Solves the maze using the Breadth-First Search (BFS) algorithm.
+         * Finds the shortest path from the start (0,0) to the end (mazeWidth-1, mazeHeight-1).
+         */
+        function solveMazeBFS() {
+            if (solving) return; // Prevent solving if already in progress
+            solving = true;
+            // Clear user's path when automated solution is requested
+            clearUserPath(); // This already clears the user path and redraws the maze with just player at start
+            solutionPath = []; // Clear previous computer solution
+            solutionInfo.textContent = 'Solving maze...'; // Update UI
+
+            resetMazeVisitedStatus(); // Reset visited visited status of all cells
+
+            const startCell = maze[0][0];
+            const endCell = maze[mazeHeight - 1][mazeWidth - 1];
+            const queue = []; // Queue for BFS traversal
+
+            startCell.visited = true; // Mark start cell as visited
+            queue.push(startCell);    // Add start cell to the queue
+
+            let found = false; // Flag to indicate if the end cell is found
+
+            while (queue.length > 0 && !found) {
+                const current = queue.shift(); // Get the next cell from the queue
+
+                if (current === endCell) {
+                    found = true; // End cell reached
+                    let temp = current;
+                    // Reconstruct the path by backtracking from the end cell using parent pointers
+                    while (temp !== null) {
+                        solutionPath.unshift(temp); // Add to the beginning of the path array
+                        temp = temp.parent;          // Move to the parent cell
+                    }
+                    solutionInfo.textContent = `Solution found! Path length: ${solutionPath.length - 1} steps!`;
+                    // Pass the current theme colors to drawMaze
+                    const currentTheme = themes[currentThemeIndex];
+                    drawMaze(solutionPath, { wallColor: currentTheme.end, pathColor: currentTheme.start });
+                    // No need to update player icon position here, as it's the computer path.
+                    break; // Exit the loop
+                }
+
+                const neighbors = [];
+                const { x, y } = current;
+
+                // Check reachable neighbors based on removed walls
+                if (!current.walls.top && y > 0) neighbors.push(maze[y - 1][x]);
+                if (!current.walls.right && x < mazeWidth - 1) neighbors.push(maze[y][x + 1]);
+                if (!current.walls.bottom && y < mazeHeight - 1) neighbors.push(maze[y + 1][x]);
+                if (!current.walls.left && x > 0) neighbors.push(maze[y][x - 1]);
+
+                // Process unvisited neighbors
+                for (const neighbor of neighbors) {
+                    if (!neighbor.visited) {
+                        neighbor.visited = true;    // Mark as visited
+                        neighbor.parent = current;  // Set current as its parent for path reconstruction
+                        queue.push(neighbor);       // Add to the queue
+                    }
+                }
+            }
+
+            if (!found) {
+                solutionInfo.textContent = 'No solution found for this maze.';
+                // If no solution, redraw without solution path
+                const currentTheme = themes[currentThemeIndex];
+                drawMaze([], { wallColor: currentTheme.end, pathColor: currentTheme.start });
+            }
+            solving = false; // Reset solving flag
+        }
+
+        /**
+         * Generates a new maze based on user input dimensions and redraws it.
+         * Includes input validation.
+         */
+        function generateAndDrawNewMaze() {
+            const width = parseInt(widthInput.value);
+            const height = parseInt(heightInput.value);
+
+            // Input validation
+            if (isNaN(width) || isNaN(height) || width < 5 || height < 5 || width > 100 || height > 100) {
+                // Using a simple alert for demonstration. In a production app, use a custom modal.
+                alert('Please enter valid width and height between 5 and 100.');
+                return;
+            }
+
+            initializeMaze(width, height);          // Set up the new maze grid and reset user path
+            generateMazeDFS(maze[0][0]);            // Generate the maze structure
+            // Apply current theme to draw the maze
+            const currentTheme = themes[currentThemeIndex];
+            drawMaze([], { wallColor: currentTheme.end, pathColor: currentTheme.start }); // Initially no solution path
+            updateAllIconPositions(); // Update icon position after maze re-init
+            updatePathControls();                   // Update button states
+        }
+
+        /**
+         * Moves the player in the specified direction if the path is clear.
+         * @param {number} dx - Change in X-coordinate.
+         * @param {number} dy - Change in Y-coordinate.
+         */
+        function movePlayer(dx, dy) {
+            const newPlayerX = currentPlayerX + dx;
+            const newPlayerY = currentPlayerY + dy;
+
+            // Check if new position is within maze bounds
+            if (newPlayerX < 0 || newPlayerX >= mazeWidth || newPlayerY < 0 || newPlayerY >= mazeHeight) {
+                return; // Cannot move out of bounds
+            }
+
+            const currentCell = maze[currentPlayerY][currentPlayerX];
+            const nextCell = maze[newPlayerY][newPlayerX];
+
+            // Check for walls between current and next cell
+            let wallPresent = false;
+            if (dx === 1 && currentCell.walls.right) wallPresent = true; // Moving right
+            if (dx === -1 && currentCell.walls.left) wallPresent = true;  // Moving left
+            if (dy === 1 && currentCell.walls.bottom) wallPresent = true; // Moving down
+            if (dy === -1 && currentCell.walls.top) wallPresent = true;   // Moving up
+
+            if (wallPresent) {
+                return; // Cannot move through a wall
+            }
+
+            // If moving successfully, update player position and path
+            currentPlayerX = newPlayerX;
+            currentPlayerY = newPlayerY;
+            userPath.push(nextCell);
+
+            // Manage history for undo/redo
+            // If we moved after doing an undo, clear the redo history
+            if (historyIndex < pathHistory.length - 1) {
+                pathHistory = pathHistory.slice(0, historyIndex + 1);
+            }
+            pathHistory.push(userPath.slice()); // Push a copy of the current path
+            historyIndex = pathHistory.length - 1;
+
+            // Re-apply theme to draw maze with updated player/path
+            const currentTheme = themes[currentThemeIndex];
+            drawMaze(solutionPath, { wallColor: currentTheme.end, pathColor: currentTheme.start });
+            updateAllIconPositions(); // Update icon position after player move
+            updatePathControls(); // Update button states
+
+            // Check if the player reached the end
+            if (currentPlayerX === mazeWidth - 1 && currentPlayerY === mazeHeight - 1) {
+                solutionInfo.textContent = `Congratulations! You solved the maze in ${userPath.length - 1} steps!`;
+            } else {
+                solutionInfo.textContent = ''; // Clear completion message if not at end
+            }
+        }
+
+        /**
+         * Undoes the last player move.
+         */
+        function undoMove() {
+            if (historyIndex > 0) {
+                historyIndex--;
+                userPath = pathHistory[historyIndex].slice(); // Restore path
+                const lastCell = userPath[userPath.length - 1];
+                currentPlayerX = lastCell.x;
+                currentPlayerY = lastCell.y;
+                // Re-apply theme to redraw
+                const currentTheme = themes[currentThemeIndex];
+                drawMaze(solutionPath, { wallColor: currentTheme.end, pathColor: currentTheme.start });
+                updateAllIconPositions(); // Update icon position after undo
+                updatePathControls();
+                if (currentPlayerX === mazeWidth - 1 && currentPlayerY === mazeHeight - 1) {
+                    solutionInfo.textContent = ''; // Clear completion message if moved away from end
+                }
+            }
+        }
+
+        /**
+         * Redoes the last undone player move.
+         */
+        function redoMove() {
+            if (historyIndex < pathHistory.length - 1) {
+                historyIndex++;
+                userPath = pathHistory[historyIndex].slice(); // Restore path
+                const lastCell = userPath[pathHistory[historyIndex].length - 1]; // Corrected: get last cell from restored path
+                currentPlayerX = lastCell.x;
+                currentPlayerY = lastCell.y;
+                // Re-apply theme to redraw
+                const currentTheme = themes[currentThemeIndex];
+                drawMaze(solutionPath, { wallColor: currentTheme.end, pathColor: currentTheme.start });
+                updateAllIconPositions(); // Update icon position after redo
+                updatePathControls();
+                if (currentPlayerX === mazeWidth - 1 && currentPlayerY === mazeHeight - 1) {
+                    solutionInfo.textContent = `Congratulations! You solved the maze in ${userPath.length - 1} steps!`;
+                }
+            }
+        }
+
+        /**
+         * Clears the user's path and resets the player to the start.
+         */
+        function clearUserPath() {
+            currentPlayerX = 0;
+            currentPlayerY = 0;
+            userPath = [maze[currentPlayerY][currentPlayerX]];
+            pathHistory = [userPath.slice()];
+            historyIndex = 0;
+            // Re-apply theme to redraw
+            const currentTheme = themes[currentThemeIndex];
+            drawMaze(solutionPath, { wallColor: currentTheme.end, pathColor: currentTheme.start });
+            updateAllIconPositions(); // Update icon position after clearing path
+            updatePathControls();
+            solutionInfo.textContent = ''; // Clear any previous solution/completion message
+        }
+
+        /**
+         * Updates the disabled state of Undo/Redo/Clear buttons based on history.
+         */
+        function updatePathControls() {
+            undoButton.disabled = (historyIndex <= 0);
+            redoButton.disabled = (historyIndex >= pathHistory.length - 1);
+            clearPathButton.disabled = (userPath.length <= 1); // Disable clear if only at start
+        }
+
+        // Event listeners for general maze controls
+        generateButton.addEventListener('click', generateAndDrawNewMaze);
+        themeSelect.addEventListener('change', (e) => {
+            // Parse the selected value to an integer index
+            applyTheme(parseInt(e.target.value));
+        });
+        playerIconSelect.addEventListener('change', (e) => {
+            currentPlayerIconClass = e.target.value;
+            playerIconElement.className = currentPlayerIconClass; // Update the icon class
+            updateAllIconPositions(); // Re-center the new icon
+        });
+        startIconSelect.addEventListener('change', (e) => {
+            currentStartIconClass = e.target.value;
+            startIconElement.className = currentStartIconClass; // Update the icon class
+            updateAllIconPositions(); // Re-center the new icon
+        });
+        endIconSelect.addEventListener('change', (e) => {
+            currentEndIconClass = e.target.value;
+            endIconElement.className = currentEndIconClass; // Update the icon class
+            updateAllIconPositions(); // Re-center the new icon
+        });
+
+        // Event listeners for user interaction controls
+        moveUpButton.addEventListener('click', () => movePlayer(0, -1));
+        moveDownButton.addEventListener('click', () => movePlayer(0, 1));
+        moveLeftButton.addEventListener('click', () => movePlayer(-1, 0));
+        moveRightButton.addEventListener('click', () => movePlayer(1, 0));
+        solveButton.addEventListener('click', solveMazeBFS);
+        undoButton.addEventListener('click', undoMove);
+        redoButton.addEventListener('click', redoMove);
+        clearPathButton.addEventListener('click', clearUserPath);
+
+        // Add keyboard support for movement
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowUp') {
+                e.preventDefault(); // Prevent page scrolling
+                movePlayer(0, -1);
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                movePlayer(0, 1);
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                movePlayer(-1, 0);
+            } else if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                movePlayer(1, 0);
+            } else if (e.key === 'z' && (e.ctrlKey || e.metaKey)) { // Ctrl+Z or Cmd+Z for undo
+                e.preventDefault(); // Prevent browser undo
+                undoMove();
+            } else if (e.key === 'y' && (e.ctrlKey || e.metaKey)) { // Ctrl+Y or Cmd+Y for redo
+                e.preventDefault(); // Prevent browser redo
+                redoMove();
+            }
+        });
+
+        // Event listener for window resize
+        window.addEventListener('resize', resizeMaze);
+
+        // Initial setup when the page loads
+        populateThemeSelect(); // Populate the dropdown
+        populatePlayerIconSelect(); // Populate the icon dropdown
+        populateStartIconSelect(); // Populate the start icon dropdown
+        populateEndIconSelect(); // Populate the end icon dropdown
+        generateAndDrawNewMaze(); // Generate and draw the initial maze
+
+
+        if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js')
+            .then(reg => {
+            console.log('Service Worker registered:', reg.scope);
+            })
+            .catch(err => {
+            console.log('Service Worker registration failed:', err);
+            });
+        });
+        }   
+    </script>
+</body>
+</html>
