@@ -65,6 +65,8 @@ This is a client-side only application. You can simply download the `index.html`
 
     ```
     git clone [https://github.com/Boda1607/maze-generator-solver.git](https://github.com/Boda1607/maze-generator-solver.git)
+     ```
+     ```
     cd maze-generator-solver
     ```
 
