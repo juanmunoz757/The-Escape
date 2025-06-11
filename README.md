@@ -62,8 +62,11 @@ This is a client-side only application. You can simply download the `index.html`
 1. **Clone the repository (if applicable):**
 
 
-git clone https://github.com/**your-username**oda1607/maze-generator-solver.git
-cd maze-generator-solver
+
+    ```
+    git clone [https://github.com/Boda1607/maze-generator-solver.git](https://github.com/Boda1607/maze-generator-solver.git)
+    cd maze-generator-solver
+    ```
 
 
 2. **Open `index.html`:** Double-click the `index.html` file or drag it into your web browser.
